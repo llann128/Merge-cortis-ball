@@ -19,18 +19,28 @@
   const dropWeights=[34,25,18,11,8,4];
   const rnd=()=>{let roll=Math.random()*100;for(let i=0;i<dropWeights.length;i++){roll-=dropWeights[i];if(roll<0)return i}return 0};
   const soundButton=el('soundToggle');
-  let soundOn=true,audioContext=null,audioBuffer=null,lastSoundAt=0;
+  let soundOn=true,audioContext=null,audioBuffer=null,lastSoundAt=0,pendingFirstLandingAt=0;
   try{soundOn=localStorage.getItem('cortis-merge-sound')!=='off'}catch{}
   function showSoundState(){soundButton.textContent=soundOn?'音效：开':'音效：关';soundButton.setAttribute('aria-pressed',String(soundOn))}
   showSoundState();
   const AudioContextClass=window.AudioContext||window.webkitAudioContext;
-  if(AudioContextClass){
-    audioContext=new AudioContextClass();
-    fetch('assets/collision.mp3?v=2').then(response=>{if(!response.ok)throw Error('audio unavailable');return response.arrayBuffer()}).then(data=>audioContext.decodeAudioData(data)).then(decoded=>{audioBuffer=decoded}).catch(()=>{});
+  const audioDataPromise=AudioContextClass?fetch('assets/collision.mp3?v=2').then(response=>{if(!response.ok)throw Error('audio unavailable');return response.arrayBuffer()}).catch(()=>null):null;
+  function flushPendingLanding(){if(!pendingFirstLandingAt||!audioBuffer||audioContext?.state!=='running')return;const recent=performance.now()-pendingFirstLandingAt<1200;pendingFirstLandingAt=0;if(recent)playCollision(0,true)}
+  function unlockSound(){
+    if(!soundOn||!AudioContextClass)return;
+    if(!audioContext){
+      try{
+        // Create and start the audio context inside a user gesture for mobile Safari.
+        audioContext=new AudioContextClass();
+        const silent=audioContext.createBufferSource();silent.buffer=audioContext.createBuffer(1,1,audioContext.sampleRate);silent.connect(audioContext.destination);silent.start();
+        audioDataPromise.then(data=>data&&audioContext.decodeAudioData(data)).then(decoded=>{if(decoded){audioBuffer=decoded;flushPendingLanding()}}).catch(()=>{});
+      }catch{return}
+    }
+    if(audioContext.state!=='running')audioContext.resume().then(flushPendingLanding).catch(()=>{});
   }
-  function unlockSound(){if(soundOn&&audioContext?.state==='suspended')audioContext.resume().catch(()=>{})}
   function playCollision(speed,firstLanding=false){
-    if(!soundOn||!audioContext||!audioBuffer||audioContext.state!=='running')return;
+    if(!soundOn||!audioContext)return;
+    if(!audioBuffer||audioContext.state!=='running'){if(firstLanding)pendingFirstLandingAt=performance.now();return}
     if(!firstLanding&&speed<7)return;
     const now=performance.now();if(!firstLanding&&now-lastSoundAt<650)return;lastSoundAt=now;
     const source=audioContext.createBufferSource(),gain=audioContext.createGain();source.buffer=audioBuffer;
