@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const names=['white','pink','yellow','blue','purple','red','black','green'];
+  const ballLabels=['白球','粉球','黄球','蓝球','紫球','红球','黑球','绿球'];
   const radii=[20,25,31,38,46,55,65,77];
   const images=names.map(n=>{const im=new Image(); im.src=`assets/${n}.png`; return im});
   const el=id=>document.getElementById(id);
@@ -14,7 +15,7 @@
   try{greenCount=Math.max(0,Number(localStorage.getItem('cortis-merge-greens'))||0);diceCount=Math.max(0,Number(localStorage.getItem('cortis-merge-dice'))||0);const saved=JSON.parse(localStorage.getItem('cortis-merge-scores')||'[]');if(Array.isArray(saved))scoreHistory=saved.slice(0,10)}catch{}
   try{hammerCount=Math.max(0,Math.floor(Number(localStorage.getItem('cortis-merge-hammers'))||0))}catch{}
   const save=(key,value)=>{try{localStorage.setItem(key,typeof value==='string'?value:JSON.stringify(value))}catch{}};
-  el('chain').innerHTML=names.map((n,i)=>`<div class="chain-item" title="第 ${i+1} 级"><img src="assets/${n}.png" alt="${n} Ball"><b>${i+1}</b></div>`).join('');
+  el('chain').innerHTML=names.map((n,i)=>`<div class="chain-item" title="第 ${i+1} 级：${ballLabels[i]}"><img src="assets/${n}.png" alt="${ballLabels[i]}"><b>${i+1}</b><span class="chain-name">${ballLabels[i]}</span></div>`).join('');
   // White through red can drop; black and green remain merge-only rewards.
   const dropWeights=[34,25,18,11,8,4];
   const rnd=()=>{let roll=Math.random()*100;for(let i=0;i<dropWeights.length;i++){roll-=dropWeights[i];if(roll<0)return i}return 0};
